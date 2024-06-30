@@ -1,0 +1,60 @@
+version: '3.4'
+
+services:
+  projectbase:
+    image: ${DOCKER_REGISTRY-}projectbase
+    build:
+      context: .
+      dockerfile: ProjectBase/Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - coffee.database
+      - localstack
+    networks:
+      - dev
+
+  coffee.database:
+    image: postgres:latest
+    container_name: coffee.database
+    environment:
+      - POSTGRES_DB=CoffeeManageDB
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mynnt4
+    volumes:
+      - coffee_volume:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    ports:
+      - "5432:5432"
+    networks:
+      - dev
+
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME-localstack_main}"
+    image: localstack/localstack
+    ports:
+      - "4566:4566"  # LocalStack Gateway
+      - "4510-4559:4510-4559"  # ext services port range
+      - "53:53"  # DNS config
+      - "53:53/udp"  # DNS config
+      - "443:443"  # LocalStack HTTPS Gateway
+    environment:
+      - DEBUG=${DEBUG-}
+      - PERSISTENCE=${PERSISTENCE-}
+      - LAMBDA_EXECUTOR=${LAMBDA_EXECUTOR-}
+      - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY-}  # only required if you have a key
+    networks:
+      - dev
+
+volumes:
+  coffee_volume:
+
+networks:
+  dev:
+    driver: bridge
